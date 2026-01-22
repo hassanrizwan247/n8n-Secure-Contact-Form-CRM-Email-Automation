@@ -1,0 +1,848 @@
+{
+  "name": "Secure Contact Form → CRM → Email Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/secure-contact",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        80
+      ],
+      "id": "057ef7ba-c93e-42c9-b268-405bee1d5abb",
+      "name": "Webhook",
+      "webhookId": "ec51ebbc-d6b5-4b36-8633-ba76435b6fcd",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9b6ca220-8d11-430f-9099-f8066c5e1449",
+              "name": "name",
+              "value": "={{ $json.query['\"full_name\"'] }}",
+              "type": "string"
+            },
+            {
+              "id": "abbcc1fe-207e-42f0-906e-86a000e8297b",
+              "name": "email",
+              "value": "={{ $json.query['\"email\"'] }}",
+              "type": "string"
+            },
+            {
+              "id": "e9fc6c69-995a-40de-83cd-6784813422ea",
+              "name": "message",
+              "value": "={{ $json.query['\"message\"'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f219be54-3903-4653-b12d-6a791c88ba12",
+              "name": "servicetype",
+              "value": "={{ $json.query['\"message\"'] }}",
+              "type": "string"
+            },
+            {
+              "id": "3549e704-8ca0-4a3b-9a50-e25293403ebd",
+              "name": "token",
+              "value": "={{ $json.query['\"token\"'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        80
+      ],
+      "id": "05fc675f-cffb-43c9-8867-047965252aad",
+      "name": "Data cleaning"
+    },
+    {
+      "parameters": {
+        "sendTo": "htfsh12345@gmail.com",
+        "subject": "its a scam!",
+        "message": "Its a scam!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        176
+      ],
+      "id": "8b4a754d-341a-4b03-904b-324d8a1dc972",
+      "name": "Send a message",
+      "webhookId": "31a40ac6-dab5-4623-af24-e9b1b451d71b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zcFJM9x1VZTl6Jw6",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "36c009cc-1bf0-4f76-ae1b-a05c3c3b4554",
+              "leftValue": "={{ $json.token }}",
+              "rightValue": "SECRET123",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "70c9908d-cfd8-4c79-bf6e-530d0e9ba15d",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "@",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "d4331b2a-d6f7-4e7e-bf1a-54793de300a6",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": 10,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "07b62f73-3586-430f-84a8-467a8967e8ae",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "82825d46-2623-4da4-a701-a68db8f8fc38",
+              "leftValue": "={{ $json.servicetype }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        80
+      ],
+      "id": "54d618f0-737e-42c5-bc6d-d3379529138c",
+      "name": "Scam Verifier"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Scam!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        672,
+        176
+      ],
+      "id": "cda17115-ff5a-4f27-ad74-dcfe4fae190f",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "// STEP 4 — Spam & Abuse Protection (Production Ready)\n\n// Disposable / blocked domains\nconst blockedDomains = [\n  \"tempmail.com\",\n  \"scam.com\",\n  \"example.com\"\n];\n\n// Get incoming item\nconst item = $input.first();\nconst email = item.json.email || \"\";\n\n// --- Email domain check ---\nconst emailParts = email.split(\"@\");\nconst domain = emailParts.length === 2 ? emailParts[1] : null;\n\nif (!domain || blockedDomains.includes(domain)) {\n  return [{ ...item.json, blocked: true, reason: \"Disposable or invalid email\" }];\n}\n\n// --- Rate limiting by IP ---\nconst staticData = $getWorkflowStaticData('global');\n\n// Ensure storage exists\nif (!staticData.submissions) {\n  staticData.submissions = {};\n}\n\n// Get IP safely\nconst headers = item.json.headers || {};\nconst ip =\n  headers[\"x-forwarded-for\"] ||\n  headers[\"x-real-ip\"] ||\n  headers[\"cf-connecting-ip\"] ||\n  \"unknown\";\n\n// Time now\nconst now = Date.now();\nconst lastTime = staticData.submissions[ip];\n\n// Block if same IP within 30 seconds\nif (lastTime && now - lastTime < 30_000) {\n  return [{ ...item.json, blocked: true, reason: \"Rate limit exceeded\" }];\n}\n\n// Store timestamp\nstaticData.submissions[ip] = now;\n\n// Passed all checks\nreturn [{ ...item.json, blocked: false }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -16
+      ],
+      "id": "2d8d3237-523f-4082-a888-176f076205f9",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "569e09b0-9c8f-4b93-acca-7ea552a50b6b",
+              "leftValue": "={{ $json.blocked }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -16
+      ],
+      "id": "90135fa8-a929-42b8-b75b-f4d6ef3eb15a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Spam!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        896,
+        80
+      ],
+      "id": "ef680805-78c0-4bdc-b585-00c0c99d0b2c",
+      "name": "Stop and Error1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1mXTNfvtypd-qfAmNLiRjkdAufVPeiuAA_H7JDWQqrCw",
+          "mode": "list",
+          "cachedResultName": "Leads_CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mXTNfvtypd-qfAmNLiRjkdAufVPeiuAA_H7JDWQqrCw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1179152783,
+          "mode": "list",
+          "cachedResultName": "Leads_CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mXTNfvtypd-qfAmNLiRjkdAufVPeiuAA_H7JDWQqrCw/edit#gid=1179152783"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        -112
+      ],
+      "id": "df85109c-c0ce-4aed-97ba-c2304c7d6fc0",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rHfcKJO21eyEjJW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "aebb6463-0654-42b6-8512-9ed8435838f0",
+              "leftValue": "={{$items(\"Get row(s) in sheet\").length > 0}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "19ce8e8d-a39c-4d37-bf45-2c4f4dffc650",
+              "leftValue": "={{ $json.notes }}",
+              "rightValue": "=Invalid email",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        -112
+      ],
+      "id": "8559fbe3-5ad9-40b9-b0f5-dcae2be15fce",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Lead doesn't exist"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        -16
+      ],
+      "id": "496a9147-e8c7-4b47-b64a-dc54e596e66f",
+      "name": "Stop and Error2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1e211c6-dadc-4260-a2bc-c7254cea0bfd",
+              "name": "lead_score",
+              "value": "10",
+              "type": "string"
+            },
+            {
+              "id": "7296454f-de4a-426e-812d-3e5c4ce9f7fc",
+              "name": "lead_type",
+              "value": "hot",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        -208
+      ],
+      "id": "3b22b16d-1911-4410-b769-466c9305e956",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1mXTNfvtypd-qfAmNLiRjkdAufVPeiuAA_H7JDWQqrCw",
+          "mode": "list",
+          "cachedResultName": "Leads_CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mXTNfvtypd-qfAmNLiRjkdAufVPeiuAA_H7JDWQqrCw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1179152783,
+          "mode": "list",
+          "cachedResultName": "Leads_CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mXTNfvtypd-qfAmNLiRjkdAufVPeiuAA_H7JDWQqrCw/edit#gid=1179152783"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ $('If1').item.json.lead_id }}",
+            "name": "={{ $('If1').item.json.name }}",
+            "email": "={{ $('If1').item.json.email }}",
+            "service": "={{ $('If1').item.json.service }}",
+            "message": "={{ $('If1').item.json.message }}",
+            "lead_score": "={{ $('If1').item.json.lead_score }}",
+            "lead_type": "={{ $('If1').item.json.lead_type }}",
+            "status": "={{ $('If1').item.json.status }}",
+            "source": "={{ $('If1').item.json.source }}",
+            "ip_address": "={{ $('If1').item.json.ip_address }}",
+            "created_at": "={{ $('If1').item.json.created_at }}",
+            "last_updated": "={{ $('If1').item.json.last_updated }}",
+            "blocked": "={{ $('If1').item.json.blocked }}",
+            "notes": "=Contacted"
+          },
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_score",
+              "displayName": "lead_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead_type",
+              "displayName": "lead_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ip_address",
+              "displayName": "ip_address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "blocked",
+              "displayName": "blocked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2016,
+        -400
+      ],
+      "id": "9490624c-01b8-472e-b9ac-c4501f3aa416",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rHfcKJO21eyEjJW",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "eb5881f0-9ba4-4bbe-bf4a-ae4efe249a5b",
+              "leftValue": "={{ $json.lead_type }}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        -112
+      ],
+      "id": "10303ef7-0cb0-49b7-bdb6-a73400fa3f04",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "sendTo": "htfsh12345@gmail.com",
+        "subject": "=New {{ $json.lead_type }} Lead – {{ $('If1').item.json.service }}",
+        "message": "=New {{ $json.lead_type }} lead!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        -208
+      ],
+      "id": "6b33ef51-9edf-405d-b172-8d56f0156863",
+      "name": "Send a message1",
+      "webhookId": "7e601fe0-6900-4a28-9ba3-5e4eb72ff25b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zcFJM9x1VZTl6Jw6",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        -16
+      ],
+      "id": "3fb9620d-e726-4dc8-97dd-1694120d53af",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": "={{ $json.id }}",
+        "message": "Contacted!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        -208
+      ],
+      "id": "b4cb9a1d-fc81-4490-99b7-186a3826fb22",
+      "name": "Reply to a message",
+      "webhookId": "95fdaca4-5705-460f-9878-d6e5a47a4fe6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "zcFJM9x1VZTl6Jw6",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"success\",\n  \"message\": \"Your request has been received.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2240,
+        -208
+      ],
+      "id": "5ade83bd-5ad1-4130-9968-1ac387ead421",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Data cleaning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data cleaning": {
+      "main": [
+        [
+          {
+            "node": "Scam Verifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scam Verifier": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Reply to a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply to a message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "4652ec23-92d5-4a5e-8bf9-ad96b1a67fed",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9d4e41ac00f47d48db81622a42173403a2c3150258a9fa8d8d121acaeccc607f"
+  },
+  "id": "vkSCx9ZJYh93DOSyYufOl",
+  "tags": []
+}
